@@ -29,7 +29,7 @@ train_data <- train_data %>%
   mutate(health__pct_physical_inactivity = health__pct_physical_inacticity) %>%
   select(-health__pct_physical_inacticity)
 
-#NAs per feature
+#determine percent of records with NAs per feature
 NAs <- data.frame(
   features = colnames(train_data %>% select(-heart_disease_mortality_per_100k, -yr, -row_id)),
   NA_pct = 
@@ -40,7 +40,7 @@ NAs <- data.frame(
                              simplify=TRUE)*100, digits=3) )
 ) 
 
-#Remove high NA features
+#Remove high NA features (higher than 10%)
 high_NA <- NAs %>% 
   filter(NA_pct > 10) %>% 
   .$features %>% 
@@ -54,9 +54,10 @@ NA2 <- sapply(train_data %>%
                 select(as.vector(NAs$features[NAs$NA_pct == min_missing])),
               function(x){which(is.na(x))}, simplify=TRUE)
 
+#What are the rowIDs for the rows with NA values on the features with the minimal percent of NAs
 train_data <- train_data[-t(NA2)[1,c(1:2)], ]
 
-#Rename original levels to show on plots
+#Rename original levels for area_rucc to better show on plots
 levels(train_data$area__rucc) <- c("Metro - 1 Million +",
                                    "Metro - 250,000 to 1 Mil",
                                    "Metro - less than 250,000",
@@ -85,13 +86,13 @@ train_data$population <- factor(train_data$population,
                                          "250k-1M", "1M+"))
 
 
-#Find median, replace NA values with median of air polltion across all population
+#Find median of air pollution, replace NA values with median of air pollution across all population
 ap_med <- median(train_data$health__air_pollution_particulate_matter, na.rm=TRUE)
 ap_NA <- which(is.na(train_data$health__air_pollution_particulate_matter))
 
 train_data$health__air_pollution_particulate_matter[ap_NA] <- ap_med
 
-#Histogram for air pollution regrouped
+#Create new groups for air pollution
 cut_labels <- c("<= 10", "11", "12", "13", "14+")
 cut_levels <- c(0, 10.9, 11.9, 12.9, 13.9, 100)
 
@@ -107,6 +108,7 @@ mid_cols <- as.vector(na_mid[, 1])
 train_data <- train_data %>%
   mutate_at(mid_cols, ~ifelse(is.na(.x), median(.x, na.rm = TRUE), .x))
 
+#Create new columns for probability of having 2 or all 3 conditions
 train_data <- train_data %>% 
   mutate(p_diab_obese = health__pct_adult_obesity * health__pct_diabetes) %>%
   mutate(p_obese_inact = health__pct_adult_obesity * health__pct_physical_inactivity) %>%
@@ -114,6 +116,7 @@ train_data <- train_data %>%
   mutate(p_all_three = health__pct_adult_obesity * health__pct_diabetes * health__pct_physical_inactivity )
 
 #Remove unused columns from the data set
+#These are the ones we're keeping
 model_cols <- c("econ__economic_typology",
                 "population",
                 "air_pollution",
@@ -139,7 +142,7 @@ num_cols <- train_data %>%
 #Categorical columns
 cat_cols <- colnames(train_data)[sapply(train_data, is.factor)]
 
-#Normalize the continuous variables
+#Normalize the continuous variables using scale/z-score
 #Create new DF with the scaled data
 model_data <- cbind(train_data %>% select(heart_disease_mortality_per_100k, cat_cols),
                                    sapply(train_data[num_cols], scale, simplify=TRUE))
@@ -148,13 +151,13 @@ model_data <- cbind(train_data %>% select(heart_disease_mortality_per_100k, cat_
 
 #####Modelling#####
 
-###Train and test sets
+###Create train and test sets from the larger dataset
 set.seed(999)
 test_index <- createDataPartition(model_data$heart_disease_mortality_per_100k, times = 1, p=0.5, list=FALSE)
 train_set <- model_data[-test_index, ] 
 test_set <- model_data[test_index, ]
 
-###Linear regression model###
+###BEGIN Linear regression model###
 fit <- lm(formula = heart_disease_mortality_per_100k ~ ., data = train_set)
 y_hat <- predict(fit, test_set)
 sqrt(mean((y_hat-test_set$heart_disease_mortality_per_100k)^2))
@@ -164,10 +167,10 @@ results <- data.frame(method = "lm",
                       RMSE = sqrt(mean((y_hat-test_set$heart_disease_mortality_per_100k)^2)),
                       TrainVal="N/A")
 
-###Linear regression model###
+###END Linear regression model###
 
 
-###Regression Trees###
+###BEGIN Regression Trees###
 ##Fit entire dataset##
 #Start with complexity parameter = 0 then prune
 rt_fit <- rpart(heart_disease_mortality_per_100k ~ ., data = model_data,
@@ -182,13 +185,16 @@ results <- rbind(results,
                             TrainVal = "N/A")
 )
 
-#Train the complexity parameter                 
+#Train the complexity parameter
+#NOTE: This is not instantaneous
 train_rt <- train(heart_disease_mortality_per_100k ~ .,
                   method = "rpart",
                   tuneGrid = data.frame(cp = seq(0, 0.05, len=100)),
                   data = model_data)
-ggplot(train_rt)
 
+#ggplot(train_rt)
+
+#Store the best tuned value
 bt <- as.numeric(train_rt$bestTune[which.min(train_rt$bestTune)])
 
 #Prune the regression tree using the best cp parameter
@@ -203,7 +209,7 @@ results <- rbind(results,
 
 ##Fit entire dataset##
 
-##Train set##
+##Run the same kind of model, but with Train/test set##
 #Start with complexity parameter = 0 then prune
 rt_fit <- rpart(heart_disease_mortality_per_100k ~ ., data = train_set,
                 control = rpart.control(cp=0, minsplit=2))
@@ -222,8 +228,10 @@ train_rt <- train(heart_disease_mortality_per_100k ~ .,
                   method = "rpart",
                   tuneGrid = data.frame(cp = seq(0, 0.05, len=100)),
                   data = train_set)
-ggplot(train_rt)
 
+#ggplot(train_rt)
+
+#Store the best tuned value
 bt_train <- as.numeric(train_rt$bestTune[which.min(train_rt$bestTune)])
 
 #Prune the regression tree using the best cp parameter; predict against test set
@@ -235,13 +243,14 @@ results <- rbind(results,
                  data.frame(method="Reg Tree - pruned; train/test",
                             RMSE=sqrt(mean((y_hat_pruned - test_set$heart_disease_mortality_per_100k)^2)),
                             TrainVal = paste("cp", format(bt_train, digits=3), sep="=")))
-###Regression Trees###
+###END Regression Trees###
 
 
-###Random Forests###
-library(randomForest)
+###BEGIN Random Forests###
 
 ##randomForest
+library(randomForest)
+
 #Simple random forest with entire data set
 train_rf <- randomForest(heart_disease_mortality_per_100k ~ ., data=model_data)
 
@@ -264,7 +273,8 @@ results <- rbind(results,
                             RMSE=sqrt(mean((train_rf_full$test$predicted - test_set$heart_disease_mortality_per_100k)^2)),
                             TrainVal = "N/A"))
 
-#Cross-validate over the mtry parameter
+#Cross-validate over the mtry parameter, using train/test
+####NOTE: THIS WILL TAKE SEVERAL MINUTES####
 fit_rf_full <- train(method="rf",
                      x=train_set[model_cols],
                      y=train_set$heart_disease_mortality_per_100k,
@@ -283,6 +293,8 @@ results <- rbind(results,
 
 ##Rborist
 #Cross validate Rborist method over minNode and predFixed parameters
+####NOTE: THIS COULD TAKE OVER AN HOUR####
+
 library(Rborist)
 tGrid = rbind(data.frame(predFixed=2, minNode = seq(2,50, by=2)),
               data.frame(predFixed=3, minNode = seq(2,50, by=2)),
@@ -306,9 +318,9 @@ results <- rbind(results,
                             TrainVal=paste(paste("predFixed", bt1, sep="="), paste("minNodes", bt2, sep="="))))
 
 ##Rborist
-###Random Forests###
+###END Random Forests###
 
-##Ensembles##
+##BEGIN Ensembles##
 ###Ensemble the 4 models together###
 # linear regression -> fit; y_hat
 # Regression Tree -> rt_pruned; y_hat_pruned
@@ -339,7 +351,7 @@ results <- rbind(results,
                             TrainVal = "N/A")
 )
 
-##Ensemble the trained random forest models
+##Ensemble only the trained random forest models
 ens_rf <- data.frame(rf = y_hat_rf_full, Rborist = y_hat_rf)
 
 ens_rf$ensemble=rowMeans(ens_rf)

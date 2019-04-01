@@ -3,6 +3,7 @@ title: "Predicting Heart Disease Mortality"
 author: "David Edelman"
 date: "February 28, 2019"
 output:
+  word_document: default
   pdf_document: default
   html_document: default
 ---
