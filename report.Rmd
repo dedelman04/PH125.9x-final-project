@@ -1,10 +1,10 @@
 ---
 title: "Predicting Heart Disease Mortality"
 author: "David Edelman"
-date: "February 28, 2019"
+date: "April 2, 2019"
 output:
-  word_document: default
   pdf_document: default
+  word_document: default
   html_document: default
 ---
 
@@ -110,13 +110,16 @@ length(cat_cols)
 
 (the column "yr" will also be ignored as it has 2 values, "a" and "b", which are merely placeholders)
 
+
 ##### Missing feature values
 In a data set of this size, missing data can adversely affect the predictive value of individual features, so we look for any features that have a significant percentage of missing data
 
 ```{r}
 #What percentage of rows have NA values for all features?
 NAs <- data.frame(
-  features = colnames(train_data %>% select(-heart_disease_mortality_per_100k, -yr, -row_id)),
+  features = colnames(train_data %>% select(-heart_disease_mortality_per_100k,
+                                            -yr,
+                                            -row_id)),
   NA_pct = 
       as.numeric(format(sapply(train_data %>%
                       select(-heart_disease_mortality_per_100k,
@@ -131,10 +134,11 @@ NAs %>% arrange(desc(NA_pct))
 
 We will remove predictors from the data set that have more than 10% missing values. This turns out to be
 
-*health__homicides_per_100k
-*health__pct_excessive_drinking
-*health__pct_adult_smoking
-*health__motor_vehicle_crash_deaths_per_100k
+* health__homicides_per_100k
+* health__pct_excessive_drinking
+* health__pct_adult_smoking
+* health__motor_vehicle_crash_deaths_per_100k
+
 
 ```{r}
 #Remove high NA features
@@ -154,7 +158,7 @@ min_missing <- min(NAs %>% filter(NA_pct > 0) %>% select(NA_pct))
 NA2 <- sapply(train_data %>% 
         select(as.vector(NAs$features[NAs$NA_pct == min_missing])),
        function(x){which(is.na(x))}, simplify=TRUE)
-t(NA2)
+t(NA2) %>% grid.table()
 ```
 
 We see that index 1090 and 1251 are missing all of the selected predictors, so we will remove them from the data set
@@ -188,8 +192,10 @@ train_data %>% ggplot(aes(x=heart_disease_mortality_per_100k))+
               geom_vline(linetype="dashed", xintercept = hd_mean, color = "blue")+
               geom_vline(linetype="dashed", xintercept = hd_med, color = "red")+
               ggtitle("Economic Typology")+theme(plot.title = element_text(hjust=0.5))+
-              annotate("text", x=hd_mean+40, y=100, label="<- mean", size=2.5, color = "blue")+
-              annotate("text", x=hd_med-40, y=100, label="median ->", size=2.5, color = "red")
+              annotate("text", x=hd_mean+45, y=100, 
+                       label="<- mean", size=2.5, color = "blue")+
+              annotate("text", x=hd_med-45, y=100, 
+                       label="median ->", size=2.5, color = "red")
 
 #Box plot by economic type
 train_data %>% ggplot(aes(x=econ__economic_typology, y=heart_disease_mortality_per_100k))+
@@ -198,8 +204,10 @@ train_data %>% ggplot(aes(x=econ__economic_typology, y=heart_disease_mortality_p
         geom_hline(linetype="dashed", yintercept = hd_med, color = "red")+
         theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1)) + 
         ggtitle("Economic Typology")+theme(plot.title = element_text(hjust=0.5))+
-        annotate("text", x=.5, y=hd_mean+30, label="mean", size=3, color = "blue", angle=90)+
-        annotate("text", x=6.5, y=hd_med-30, label="median", size=3, color = "red", angle=90)
+        annotate("text", x=.5, y=hd_mean+30, 
+                 label="mean", size=3, color = "blue", angle=90)+
+        annotate("text", x=6.5, y=hd_med-30, 
+                 label="median", size=3, color = "red", angle=90)
 
 ```
 
@@ -221,8 +229,8 @@ bind_rows(train_data %>% select(heart_disease_mortality_per_100k,
                              ifelse(round(md,1) == round(hd_med,1),
                               "Equal", "Above")))%>%
   select(econ__economic_typology, mn, 
-         MeanAboveBelow, md, MedianAboveBelow)
-  , data.frame(econ__economic_typology = "Total Population Values",
+         MeanAboveBelow, md, MedianAboveBelow),
+  data.frame(econ__economic_typology = "Total Population Values",
                mn= hd_mean, 
                MeanAboveBelow = "_",
                md = hd_med,
@@ -254,13 +262,12 @@ train_data %>% ggplot(aes(x=heart_disease_mortality_per_100k))+
   facet_wrap(~ area__rucc, ncol = 3)+
   geom_vline(linetype="dashed", xintercept = hd_mean, color = "blue")+
   geom_vline(linetype="dashed", xintercept = hd_med, color = "red")+
-  annotate("text", x=hd_mean+40, y=55, label="<- mean", size=2.5, color = "blue")+
-  annotate("text", x=hd_med-40, y=55, label="median ->", size=2.5, color = "red")
+  annotate("text", x=hd_mean+45, y=55, label="<- mean", size=2.5, color = "blue")+
+  annotate("text", x=hd_med-45, y=55, label="median ->", size=2.5, color = "red")
 ```
 
 However, we can transform them into population groups as a proxy for Area_RUCC. The transformation is 
 
---maybe stuff with knitr or gridextra instead--
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 #Show area_rucc level mapping to population
 lvl <- levels(train_data$area__rucc)
@@ -268,7 +275,7 @@ pop_lvl <- c("1M+", "250k-1M", "20-250K", "under 2,500", "under 2,500", "2.5-20K
 
 rucc_tab <- data.frame(Area_RUCC=lvl, Population=pop_lvl)
 
-grid.table(rucc_tab)
+grid.table(rucc_tab, rows=NULL)
 ```
 
 ```{r}
@@ -301,8 +308,8 @@ train_data %>% ggplot(aes(x=heart_disease_mortality_per_100k))+
   facet_wrap(~ population, ncol = 3)+
   geom_vline(linetype="dashed", xintercept = hd_mean, color = "blue")+
   geom_vline(linetype="dashed", xintercept = hd_med, color = "red")+
-  annotate("text", x=hd_mean+40, y=75, label="<- mean", size=2.5, color = "blue")+
-  annotate("text", x=hd_med-40, y=75, label="median ->", size=2.5, color = "red")
+  annotate("text", x=hd_mean+45, y=75, label="<- mean", size=2.5, color = "blue")+
+  annotate("text", x=hd_med-45, y=75, label="median ->", size=2.5, color = "red")
 ```
 
 The “2.5-20K” group appears to be skewed somewhat positive, while the “1M+” group is skewed negative, even though the peak is below the population mean and median. Box plots show the distributions more cleanly.
@@ -337,13 +344,13 @@ bind_rows(train_data %>% select(heart_disease_mortality_per_100k,
                                    "Below",
                                    ifelse(round(md,1) == hd_med,
                                           "Equal", "Above"))) %>%
-  select(population, mn, MeanAboveBelow, md, MedianAboveBelow)
-  , data.frame(population = "Total Population Values", 
+  select(population, mn, MeanAboveBelow, md, MedianAboveBelow),
+  data.frame(population = "Total Population Values", 
                mn= hd_mean, 
                MeanAboveBelow = "_",
                md = hd_med,
                MedianAboveBelow = "_")
-)
+) %>% as.data.frame()
 ```
 
 With population groups showing a different distribution for heart mortality rates, this calculated feature is another good candidate for use in a predictive model.
@@ -376,7 +383,8 @@ The initial spread of values showed a large discrepancy in population size, espe
 cut_labels <- c("<= 10", "11", "12", "13", "14+")
 cut_levels <- c(0, 10.9, 11.9, 12.9, 13.9, 100)
 
-train_data$air_pollution <- cut(train_data$health__air_pollution_particulate_matter, cut_levels)
+train_data$air_pollution <- cut(train_data$health__air_pollution_particulate_matter,
+                                cut_levels)
 levels(train_data$air_pollution) <- cut_labels
 
 train_data %>% 
@@ -396,8 +404,8 @@ train_data %>% ggplot(aes(x=heart_disease_mortality_per_100k))+
   facet_wrap(~ air_pollution, drop=TRUE, ncol = 3)+
   geom_vline(linetype="dashed", xintercept = hd_mean, color = "blue")+
   geom_vline(linetype="dashed", xintercept = hd_med, color = "red")+
-  annotate("text", x=hd_mean+40, y=80, label="<- mean", size=2.5, color = "blue")+
-  annotate("text", x=hd_med-40, y=80, label="median ->", size=2.5, color = "red")
+  annotate("text", x=hd_mean+45, y=80, label="<- mean", size=2.5, color = "blue")+
+  annotate("text", x=hd_med-45, y=80, label="median ->", size=2.5, color = "red")
 
 #Box plot by air_pollution
 train_data %>% ggplot(aes(x=air_pollution, y=heart_disease_mortality_per_100k))+
@@ -427,13 +435,13 @@ bind_rows(train_data %>% select(heart_disease_mortality_per_100k,
                                    "Below",
                                    ifelse(round(md,1) == hd_med,
                                           "Equal", "Above"))) %>%
-  select(air_pollution, mn, MeanAboveBelow, md, MedianAboveBelow)
-  , data.frame(air_pollution = "Total Population Values", 
+  select(air_pollution, mn, MeanAboveBelow, md, MedianAboveBelow),
+  data.frame(air_pollution = "Total Population Values", 
                mn= hd_mean, 
                MeanAboveBelow = "_",
                md = hd_med,
                MedianAboveBelow = "_")
-)
+) %>% as.data.frame()
 ```
 
 #### Correlation Between Numeric Features and Heart Disease Mortality
@@ -458,8 +466,10 @@ feat_means <- train_data %>% select(as.vector(na_mid[,1])) %>%
 train_data %>% select(as.vector(na_mid[,1])) %>%
   gather(feature, value) %>%
   ggplot(aes(x=value))+geom_histogram(bins=40)+
-  geom_vline(aes(xintercept=mn), data = feat_means, linetype = "dashed", color = "yellow")+
-  geom_vline(aes(xintercept=md), data = feat_means, linetype = "dashed", color = "red")+
+  geom_vline(aes(xintercept=mn), data = feat_means, 
+             linetype = "dashed", color = "yellow")+
+  geom_vline(aes(xintercept=md), data = feat_means, 
+             linetype = "dashed", color = "red")+
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))+
   facet_wrap(~ feature, scales="free") +
   xlab("yellow = mean; red = median") + ylim(0, 1000)
@@ -480,8 +490,10 @@ train_data <- train_data %>%
 train_data %>% select(as.vector(na_mid[,1])) %>%
   gather(feature, value) %>%
   ggplot(aes(x=value))+geom_histogram(bins=40)+
-  geom_vline(aes(xintercept=mn), data = feat_means, linetype = "dashed", color = "yellow")+
-  geom_vline(aes(xintercept=md), data = feat_means, linetype = "dashed", color = "red")+
+  geom_vline(aes(xintercept=mn), data = feat_means, 
+             linetype = "dashed", color = "yellow")+
+  geom_vline(aes(xintercept=md), data = feat_means, 
+             linetype = "dashed", color = "red")+
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))+
   facet_wrap(~ feature, scales="free") +
   xlab("yellow = mean; red = median") + ylim(0, 1000)
@@ -508,68 +520,15 @@ train_data %>% select(heart_disease_mortality_per_100k, cols) %>%
   ggplot(aes(x=val, y= heart_disease_mortality_per_100k))+geom_point(na.rm = TRUE)+
   facet_wrap(~ data_type, ncol=ncol, scales="free_x")+xlab("percent")+
   geom_smooth(method="lm", na.rm = TRUE)
-
+```
+```{r}
 data.frame(
   feature=names(train_data[cols]),
   corr = sapply(train_data[cols], function(x) {
     cor(data.frame(train_data$heart_disease_mortality_per_100k, x),
         use="complete.obs")[1,2] })
-  ) %>% arrange(desc(abs(corr)))
+  ) %>% arrange(desc(abs(corr))) %>% grid.table()
 
-```
-```{r, echo=FALSE, eval=FALSE}
-corr <- data.frame()
-for (i in 1:length(cols)) {
-  corr[cols[i],1] <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cols[i]]),
-                   use="complete.obs")[1,2],3)
-}
-
-corr <- cbind(cols, corr)
-colnames(corr) <- c("type", "cor")
-corr <- corr %>% mutate(type = substr(type, 7, 100)) %>% arrange(desc(abs(cor)))
-
-corr %>% grid.table()
-
-
-```
-
-```{r, eval=FALSE, echo=FALSE}
-#Correlation among econ stats
-cname <- colnames(train_data)
-cname <- cname[like(cname,"econ__pct")]
-
-par(mfrow=c(2,2))
-
-p = list()
-
-for (i in 1:length(cname)) {
-
-  #Determine correlation with default method
-  cor <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cname[i]]),
-                   use="complete.obs")[1,2],3)
-  cor <- paste("corr =", as.character(cor))
-  
-  #Plot econ factor vs mortality
-    dplot <- ggplot(train_data, 
-                  aes_string(y="heart_disease_mortality_per_100k",
-                             x=cname[i]))+
-    ylab("hrt_mort")+
-    xlab(substr(cname[i], 7, 100))+
-    xlim(0,max(train_data[cname[i]], na.rm=TRUE)+.05)
-    
-    if(cname[i]=="econ__pct_civilian_labor") {
-      dplot <- dplot + theme(plot.background = element_rect(colour = "black", fill=NA, size=2))
-    }
-
-
-  p[[i]] <- dplot+geom_point(na.rm=TRUE)+
-    geom_smooth(method="lm", se=TRUE, na.rm=TRUE)+
-    annotate("text", x=max(train_data[cname[i]],na.rm=TRUE), y=500, label= cor, size=3)
-}
-
-do.call(grid.arrange, p)
 ```
 
 As seen above, **“Percent of Civilian Labor”** shows a moderate negative correlation with heart disease mortality (despite the number of outliers appearing to be greater than the other factors) and is a good candidate for use in a predictive model.  The remaining factors do not show a strong enough correlation ( >= 0.45) to be considered good candidates.
@@ -579,7 +538,7 @@ The dataset contains 12 demographic features that are reported as percentages of
 
 ```{r}
 cols <- colnames(train_data)[like(colnames(train_data), "demo__")] 
-ncol <- ifelse(length(cols) <= 6, 2, 3)
+ncol <- 4
 
 train_data %>% select(heart_disease_mortality_per_100k, cols) %>%
   gather(data_type, val, -heart_disease_mortality_per_100k) %>%
@@ -587,73 +546,18 @@ train_data %>% select(heart_disease_mortality_per_100k, cols) %>%
   ggplot(aes(x=val, y= heart_disease_mortality_per_100k))+geom_point(na.rm = TRUE)+
   facet_wrap(~ data_type, ncol=ncol, scales="free_x")+xlab("percent/rate per 1k")+
   geom_smooth(method="lm")
-
+```
+```{r}
 data.frame(
   feature=substr(names(train_data[cols]), 7, 100),
   corr = sapply(train_data[cols], function(x) {
     cor(data.frame(train_data$heart_disease_mortality_per_100k, x),
         use="complete.obs")[1,2] })
-  ) %>% arrange(desc(abs(corr)))
+  ) %>% arrange(desc(abs(corr))) %>% grid.table()
 
-```
-```{r, echo=FALSE, eval=FALSE}
-corr <- data.frame()
-for (i in 1:length(cols)) {
-  corr[cols[i],1] <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cols[i]]),
-                   use="complete.obs")[1,2],3)
-}
-
-corr <- cbind(cols, corr)
-colnames(corr) <- c("type", "cor")
-corr <- corr %>% mutate(type = substr(type, 7, 100)) %>% arrange(desc(abs(cor)))
-
-corr %>% grid.table()
-
-```
-
-
-```{r, echo=FALSE, eval=FALSE}
-#Correlation among demo stats
-cname <- colnames(train_data)
-cname <- cname[like(cname,"demo_")]
-cname <- cname[!like(cname, "_1k")]
-
-par(mfrow=c(3,4))
-
-p = list()
-
-for (i in 1:length(cname)) {
-  #Determine correlation with default method
-    cor <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cname[i]]),
-                   use="complete.obs")[1,2],3)
-  cor <- paste("corr =", as.character(cor))
-
-  #Plot demo vs mortality
-  dplot <- ggplot(train_data, 
-                  aes_string(y="heart_disease_mortality_per_100k",
-                             x=cname[i]))+
-                    ylab("hrt_mort")+
-                    xlab(substr(cname[i], 11, 100)) #+
-                    #xlim(0,1)
-  if(cname[i] %in% c("demo__pct_non_hispanic_african_american",
-                     "demo__pct_adults_less_than_a_high_school_diploma",
-                     "demo__pct_adults_bachelors_or_higher")) {
-      dplot <- dplot + theme(plot.background = element_rect(colour = "black", fill=NA, size=2))
-  }
-
-  p[[i]] <- dplot+geom_point(na.rm=TRUE)+
-    geom_smooth(method="lm", se=TRUE, na.rm=TRUE)+
-    annotate("text", x=.9, y=500, label= cor, size=2.5)+xlim(0, 1)
-}
-
-do.call(grid.arrange, p)
 ```
 
 Analysis of the correlation scatter plots showed that there were several candidates for model features. **“Percent of non-Hispanic African Americans”** was chosen as it had the strongest correlation in the subset of race/ethnicity demographics, even though its actual correlation was only moderate ( < .45 ).  **“Adults with less than a High School diploma”** and **“Adults with a Bachelor’s Degree or higher”** were chosen for their strong positive and negative correlations, respectively.  **"Death Rate per 1000"** also showed a high-moderate correlation.
-
-The other two demographic categories related to education level (“High School Diploma”, “Some College”) were considered as features, but in practice they added no predictive power to the model. Two combination features, one of which added together “High School” and “Less than High School” and the other “Some College” and “Bachelor’s or higher” were considered as well.  While the combination features had higher correlations with heart disease mortality than the individual features, in practice the model seemed to suffer from overfitting when the combination features were used in place of the individual ones.
 
 Because of their extremely weak correlations (abs value < .15), demographic features related to gender and age were not considered for the model.
 
@@ -674,92 +578,41 @@ train_data %>% select(heart_disease_mortality_per_100k, cols) %>%
   ggplot(aes(x=val, y= heart_disease_mortality_per_100k))+geom_point(na.rm = TRUE)+
   facet_wrap(~ data_type, ncol=ncol, scales="free_x")+xlab("percent/per provider")+
   geom_smooth(method="lm", na.rm = TRUE)
-
+```
+```{r}
 data.frame(
   feature=names(train_data[cols]),
   corr = sapply(train_data[cols], function(x) {
     cor(data.frame(train_data$heart_disease_mortality_per_100k, x),
         use="complete.obs")[1,2] })
-  ) %>% arrange(desc(abs(corr)))
+  ) %>% arrange(desc(abs(corr))) %>% grid.table()
 
-```
-```{r, echo=FALSE, eval=FALSE}
-corr <- data.frame()
-for (i in 1:length(cols)) {
-  corr[cols[i],1] <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cols[i]]),
-                   use="complete.obs")[1,2],3)
-}
-
-corr <- cbind(cols, corr)
-colnames(corr) <- c("type", "cor")
-corr <- corr %>% mutate(type = substr(type, 9, 100)) %>% arrange(desc(abs(cor)))
-
-corr %>% grid.table()
-```
-
-```{r, eval=FALSE, echo=FALSE}
-#Correlation among health stats
-cname <- colnames(train_data)
-cname <- cname[like(cname,"health__pct")]
-#cname <- cname[!like(cname, "_1k")]
-
-par(mfrow=c(4,3))
-
-p = list()
-
-for (i in 1:length(cname)) {
-  #Calculate correlation between health pct and mortality
-  cor <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                        train_data[,cname[i]]),
-             use="complete.obs")[1,2],3)
-  cor <- paste("corr =", as.character(cor))
-
-  #Scatter plot
-    dplot <- ggplot(train_data,
-                  aes_string(y="heart_disease_mortality_per_100k",
-                             x=cname[i]))+
-    ylab("hrt_mort")+
-    xlab(substr(cname[i], 9, 100))+
-    xlim(0,.6)
-  
-  if(cname[i] %in% c("health__pct_adult_obesity",
-                     "health__pct_adult_smoking",
-                     "health__pct_diabetes",
-                     "health__pct_physical_inacticity")) {
-      dplot <- dplot + theme(plot.background = element_rect(colour = "black", fill=NA, size=2))
-  }
-
-  p[[i]] <- dplot+geom_point(na.rm=TRUE)+
-    geom_smooth(method="lm", se=TRUE, na.rm=TRUE)+
-    annotate("text", x=.5, y=500, label= cor, size=3.5)
-}
-
-do.call(grid.arrange, p)
 ```
 
 The 2 features related to medical professionals did not show a strong correlation ( > 0.45) to heart disease mortality rate, so they were not considered for the predictive model.
 
-"Percent of Physical Inactivity" shows the strongest correlation with heart disease mortality among the health percentages, indicating a strong candidate for the predictive model. Two other percentages (Obesity, Diabetes) also showed strong correlation with heart disease mortality, but some further thought and analysis produced features with even stronger correlations.
+**"Percent of Physical Inactivity"** shows the strongest correlation with heart disease mortality among the health percentages, indicating a strong candidate for the predictive model. Two other percentages (Obesity, Diabetes) also showed strong correlation with heart disease mortality, but some further thought and analysis produced features with even stronger correlations.
 
 ##### Combining Health Percentages
 Thinking about the 3 health percentages:
+
 * Percent of adult obesity
 * Percent of physical inactivity
 * Percent of diabetes
+
 we can say that each of the percentages is the same as the probability of a randomly chosen individual in that county having the specific condition. Let us further assume that each of the events (being obese, being physically inactive, having diabetes) are independent of each other. According to probability theory, the probability of two independent events occurring is simply the product of the two individual probabilities. Therefore
 
 $$
-\mbox{P}(\mbox{diabetes & obese}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{obese)}
+\mbox{P}(\mbox{diabetes and obese}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{obese)}
 $$
 $$
-\mbox{P}(\mbox{diabetes & physical inactivity}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{physical inactivity)}
+\mbox{P}(\mbox{diabetes and physical inactivity}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{physical inactivity)}
 $$
 $$
-\mbox{P}(\mbox{obese & physical inactivity}) = \mbox{P}(\mbox{obese}) * \mbox{P}(\mbox{physical inactivity)}
+\mbox{P}(\mbox{obese and physical inactivity}) = \mbox{P}(\mbox{obese}) * \mbox{P}(\mbox{physical inactivity)}
 $$
 $$
-\mbox{P}(\mbox{diabetes & obese & physical inactivity}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{obese)} * \mbox{P}(\mbox{physical inactivity})
+\mbox{P}(\mbox{diabetes and obese and physical inactivity}) = \mbox{P}(\mbox{diabetes}) * \mbox{P}(\mbox{obese)} * \mbox{P}(\mbox{physical inactivity})
 $$
 
 By calculating these combined probabilities, we find features that have even stronger correlation that each individual feature
@@ -769,7 +622,10 @@ train_data <- train_data %>%
   mutate(p_diab_obese = health__pct_adult_obesity * health__pct_diabetes) %>%
   mutate(p_obese_inact = health__pct_adult_obesity * health__pct_physical_inactivity) %>%
   mutate(p_diab_inact = health__pct_diabetes * health__pct_physical_inactivity) %>%
-  mutate(p_all_three = health__pct_adult_obesity * health__pct_diabetes * health__pct_physical_inactivity )
+  mutate(p_all_three =  
+           health__pct_adult_obesity * 
+           health__pct_diabetes * 
+           health__pct_physical_inactivity )
 
 ```
 ```{r}
@@ -794,22 +650,8 @@ data.frame(
   corr = sapply(train_data[cols], function(x) {
     cor(data.frame(train_data$heart_disease_mortality_per_100k, x),
         use="complete.obs")[1,2] })
-  ) %>% arrange(desc(abs(corr)))
+  ) %>% arrange(desc(abs(corr))) %>% grid.table()
 
-```
-```{r, echo=FALSE, eval=FALSE}
-corr <- data.frame()
-for (i in 1:length(cols)) {
-  corr[cols[i],1] <- round(cor(data.frame(train_data$heart_disease_mortality_per_100k,
-                              train_data[,cols[i]]),
-                   use="complete.obs")[1,2],3)
-}
-
-corr <- cbind(cols, corr)
-colnames(corr) <- c("type", "cor")
-corr <- corr %>% mutate(type = substr(type, 3, 100)) %>% arrange(desc(abs(cor)))
-
-corr %>% grid.table()
 ```
 
 All of the combinations had a correlation higher than any one individual feature, so we will use these combined probabilities in the predictive model.
@@ -851,7 +693,7 @@ train_data <- train_data %>% select(model_cols, heart_disease_mortality_per_100k
 Since the outcome of the model (Heart Disease Mortality per 100,000 people) needs to be a number (as opposed to a class or category), we will need to use some kind of regression model to get the outcome we desire.
 
 ###Normalization of Numeric Features
-For a regression model, if we have features that are different by orders of magnitude we likely need to do something so that larger values do not dominate the formula. Since most of the numeric features are percentages (i.e. 0 < x < 1), we will apply a transformation to at least the "Death Rate per 1,000" feature.
+For a regression model, if we have features that are different by orders of magnitude we likely need to do something so that larger values do not dominate the formula. Since most of the numeric features are percentages (i.e. 0 < x < 1), we will apply a transformation to reduce the relative effect of the "Death Rate per 1,000" feature.
 
 ####Exploration of feature distributions
 
@@ -871,7 +713,7 @@ train_data %>% select(num_cols) %>%
   facet_wrap(~ feature, scales="free")
 ```
 
-The continuous features show an approximate normal distribution (although some are skewed), with the exception of "Percent non-Hispanic African American" and "Percent of adults with less than a High School diploma". With approximate normal features, there are several options to consider for normalization:
+The continuous features show an approximate normal distribution (although some are skewed), with the exception of **"Percent non-Hispanic African American"** and **"Percent of adults with less than a High School Diploma"**. With approximate normal features, there are several options to consider for normalization:
 
 * Scaling/z-score
 * Cube Root
@@ -894,14 +736,15 @@ Similary, were there any features with negative values, we could not use the squ
 We apply the scale, cube root and square root transformations and look at the resulting features
 
 ```{r}
-#Apply scale, plot distributions, show range
+#Apply scale/z-score, plot distributions, show range
 data_scale <- scale(train_data[num_cols])
 as.data.frame(data_scale) %>% 
   gather(feature, value) %>%
   ggplot(aes(x=value)) + geom_histogram(bins=50) +
   facet_wrap(~ feature, scales="free")
+
 ranges <- sapply(data_scale, range, simplify=TRUE)
-#Scale/Z-score
+
 data.frame(MIN = min(ranges[1,]), MAX = max(ranges[2,]))
 
 #Apply cube root transformation, plot distributions, show range
@@ -910,8 +753,9 @@ as.data.frame(data_scale) %>%
   gather(feature, value) %>%
   ggplot(aes(x=value)) + geom_histogram(bins=50) +
   facet_wrap(~ feature, scales="free")
+
 ranges <- sapply(data_scale, range, simplify=TRUE)
-#Cube Root
+
 data.frame(MIN = min(ranges[1,]), MAX = max(ranges[2,]))
 
 #Apply square root transformation, plot distributions, show range
@@ -920,8 +764,9 @@ as.data.frame(data_scale) %>%
   gather(feature, value) %>%
   ggplot(aes(x=value)) + geom_histogram(bins=50) +
   facet_wrap(~ feature, scales="free")
+
 ranges <- sapply(data_scale, range, simplify=TRUE)
-#Square Root
+
 data.frame(MIN = min(ranges[1,]), MAX = max(ranges[2,]))
 ```
 
@@ -1134,7 +979,7 @@ Another random forest algorithm that can be trained with the caret package is Rb
 * predFixed - the number of predictors to randomly select at each split
 * minNodes - the mininmum number of members (size) of each final node
 
-We will just train Rborist against the train and test sets, since we have seen in all cases that we are liklely introducing overfitting when using the entire dataset to predict. We will use ranges of predFixed from 1 thru 4, and minNodes as even numbers from 2 thru 50. 
+We will just train Rborist against the train and test sets, since we have seen in all cases that we are liklely introducing overfitting when using the entire dataset to predict. We will use ranges of predFixed from 2 thru 5, and minNodes as even numbers from 2 thru 50. 
 
 ```{r, eval=FALSE}
 library(Rborist)
@@ -1215,7 +1060,7 @@ The RMSE for the mean prediction in our random forest models is in between the R
 
 ###Summary of modelling
 ```{r, echo=FALSE}
-results[c(1,5,7,9:12), ] %>% arrange(RMSE)
+results[c(1,5,7,9:12), ] %>% arrange(RMSE) %>% grid.table(rows=NULL)
 ```
 
 ##Conclusions
